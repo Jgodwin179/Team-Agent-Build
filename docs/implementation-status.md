@@ -1,6 +1,6 @@
 # Implementation status
 
-Last updated: Phase 5 complete (local Convex); schedules/subagents browser smoke pending screenshots.
+Last updated: Phase 5 complete (local Convex); schedules/subagents browser smoke 5/5.
 
 ## Phase summary
 
@@ -32,7 +32,7 @@ Last updated: Phase 5 complete (local Convex); schedules/subagents browser smoke
 
 - `pnpm typecheck` / `pnpm lint` / `pnpm build` / `npx convex codegen` — pass
 - `node tests/phase5/schedules.test.mjs` — pass
-- Browser smoke — Schedules UI + coordinator partial (screenshots in Project store `media/phase5-*`)
+- Browser smoke — 5/5 (screenshots + recording in Project store `media/phase5-*`)
 
 ### Phase 5 design notes
 
