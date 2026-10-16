@@ -1,6 +1,6 @@
 # Implementation status
 
-Last updated: Phase 3 complete (local Convex); connectors/documents smoke pending in this session.
+Last updated: Phase 3 complete (local Convex); connectors/documents browser smoke 22/22.
 
 ## Phase summary
 
@@ -63,7 +63,8 @@ Last updated: Phase 3 complete (local Convex); connectors/documents smoke pendin
 - [x] No live CRM writes (fails closed even if `ALLOW_LIVE_CRM_WRITES=true`)
 - [x] Fixtures documented: denied scopes, pagination, expired auth, cross-deal retrieval (`tests/phase3/fixtures.md`)
 - [x] `docs/provider-capabilities.md` + this status file updated
-- [ ] Live Composio/GHL smoke — **blocked** without credentials (MOCK path verified instead)
+- [x] MOCK browser smoke — Connections / Documents / Approvals dry-run (22/22)
+- [ ] Live Composio/GHL smoke — **blocked** without credentials
 
 ### Phase 3 verification commands
 
@@ -72,7 +73,7 @@ Last updated: Phase 3 complete (local Convex); connectors/documents smoke pendin
 - `npx convex codegen` / Convex tsc — pass
 - `pnpm build` — pass
 - `node tests/phase3/mock-adapters.test.mjs` — pass
-- Browser smoke — Connections / Documents / Approvals (see Project store `media/phase3-*`)
+- Browser smoke — pass (screenshots in Project store `media/phase3-*`)
 
 ### Phase 3 design notes
 
