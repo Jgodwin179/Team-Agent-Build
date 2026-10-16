@@ -30,8 +30,9 @@ Last updated: Phase 6 complete (local Convex); live smoke **not** run (authoriza
 
 ### Phase 6 verification commands
 
-- `pnpm typecheck` / `pnpm lint` / `pnpm build` / `npx convex codegen`
-- `node tests/phase6/ops.test.mjs` (if present)
+- `pnpm typecheck` / `pnpm lint` / `pnpm build` / `npx convex codegen` — pass
+- `node tests/phase6/ops.test.mjs` — pass (5/5)
+- Browser smoke — 9/9 (media `phase6-*` in Project store)
 
 ### Phase 6 design notes
 
