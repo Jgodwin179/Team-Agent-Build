@@ -21,6 +21,14 @@ npx convex env set SITE_URL http://localhost:3000
 # npx convex env set GHL_LOCATION_ID <locationId>
 # npx convex env set GHL_FORCE_MOCK true   # optional: force MOCK even with keys
 # Do NOT set ALLOW_LIVE_CRM_WRITES in Phase 3
+
+# Optional Phase 4: AgentMail / Twilio (default labeled MOCK; outbound dry-run)
+# Also set the same vars on Vercel / .env.local for Next.js webhook routes.
+# npx convex env set AGENTMAIL_API_KEY <key>
+# npx convex env set AGENTMAIL_WEBHOOK_SECRET <shared-secret>
+# npx convex env set TWILIO_ACCOUNT_SID <sid>
+# npx convex env set TWILIO_AUTH_TOKEN <token>
+# Do NOT set ALLOW_LIVE_OUTBOUND without explicit authorization
 ```
 
 `.env.local` (written by CLI) should include:

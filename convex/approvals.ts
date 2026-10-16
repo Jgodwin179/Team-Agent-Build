@@ -26,6 +26,7 @@ const approvalDetail = v.object({
   decidedAt: v.optional(v.number()),
   decisionNote: v.optional(v.string()),
   outboundActionId: v.optional(v.id("outboundActions")),
+  consumedAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
@@ -123,8 +124,9 @@ export const decide = mutation({
 });
 
 /**
- * Execute an approved CRM action. Phase 3 defaults to dry-run and never
- * performs live GHL writes.
+ * Execute an approved CRM/outbound action with atomic claim.
+ * Defaults to dry-run; never performs live GHL/email/SMS writes here.
+ * Repeated clicks after claim fail closed.
  */
 export const executeApproved = action({
   args: {
@@ -136,6 +138,7 @@ export const executeApproved = action({
       v.literal("dry_run"),
       v.literal("sent"),
       v.literal("failed"),
+      v.literal("unknown"),
     ),
     externalId: v.optional(v.string()),
     detail: v.string(),
@@ -145,7 +148,7 @@ export const executeApproved = action({
     ctx,
     args,
   ): Promise<{
-    status: "dry_run" | "sent" | "failed";
+    status: "dry_run" | "sent" | "failed" | "unknown";
     externalId?: string;
     detail: string;
     dryRun: boolean;
@@ -166,6 +169,23 @@ export const executeApproved = action({
       );
     }
 
+    const actor =
+      approval.decidedByAuthUserId ?? approval.proposedByAuthUserId;
+    const claim = await ctx.runMutation(internal.outbound.claimForExecution, {
+      organizationId: args.organizationId,
+      approvalId: args.approvalId,
+      actorAuthUserId: actor,
+    });
+    if (claim.alreadyClaimed) {
+      throw new Error(
+        "Approval already claimed/consumed (repeated click ignored)",
+      );
+    }
+
+    await ctx.runMutation(internal.outbound.markSending, {
+      outboundActionId: claim.outboundActionId,
+    });
+
     const dryRun = org.outboundDryRun !== false;
     const result: {
       status: "dry_run" | "sent" | "failed";
@@ -178,6 +198,20 @@ export const executeApproved = action({
       dryRun,
     });
 
+    const terminal =
+      result.status === "dry_run"
+        ? ("dry_run" as const)
+        : result.status === "sent"
+          ? ("sent" as const)
+          : ("failed" as const);
+
+    await ctx.runMutation(internal.outbound.markTerminal, {
+      outboundActionId: claim.outboundActionId,
+      status: terminal,
+      externalId: result.externalId,
+      resultJson: JSON.stringify({ detail: result.detail }),
+    });
+
     await ctx.runMutation(internal.approvals.recordExecution, {
       organizationId: args.organizationId,
       approvalId: args.approvalId,
@@ -185,9 +219,14 @@ export const executeApproved = action({
       externalId: result.externalId,
       detail: result.detail,
       dryRun,
-      actorAuthUserId:
-        approval.decidedByAuthUserId ?? approval.proposedByAuthUserId,
+      actorAuthUserId: actor,
     });
+
+    if (approval.runId && result.status !== "failed") {
+      await ctx.runMutation(internal.runSteps.markSucceeded, {
+        runId: approval.runId,
+      });
+    }
 
     return {
       status: result.status,

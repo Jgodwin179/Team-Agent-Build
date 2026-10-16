@@ -20,8 +20,11 @@ import type * as documentActions from "../documentActions.js";
 import type * as documents from "../documents.js";
 import type * as ghlActions from "../ghlActions.js";
 import type * as http from "../http.js";
+import type * as inbox from "../inbox.js";
+import type * as lib_association from "../lib/association.js";
 import type * as lib_documentAccess from "../lib/documentAccess.js";
 import type * as lib_hash from "../lib/hash.js";
+import type * as lib_mockPdfBase64 from "../lib/mockPdfBase64.js";
 import type * as lib_pdf_types from "../lib/pdf/types.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_providers_boxMock from "../lib/providers/boxMock.js";
@@ -30,6 +33,9 @@ import type * as lib_providers_ghlMock from "../lib/providers/ghlMock.js";
 import type * as lib_providers_ghlTypes from "../lib/providers/ghlTypes.js";
 import type * as lib_runTransitions from "../lib/runTransitions.js";
 import type * as organizations from "../organizations.js";
+import type * as outbound from "../outbound.js";
+import type * as pov from "../pov.js";
+import type * as povSteps from "../povSteps.js";
 import type * as runSteps from "../runSteps.js";
 import type * as runs from "../runs.js";
 import type * as seed from "../seed.js";
@@ -37,6 +43,7 @@ import type * as tools from "../tools.js";
 import type * as workflows_assignmentWorkflow from "../workflows/assignmentWorkflow.js";
 import type * as workflows_manager from "../workflows/manager.js";
 import type * as workflows_onComplete from "../workflows/onComplete.js";
+import type * as workflows_povWorkflow from "../workflows/povWorkflow.js";
 
 import type {
   ApiFromModules,
@@ -57,8 +64,11 @@ declare const fullApi: ApiFromModules<{
   documents: typeof documents;
   ghlActions: typeof ghlActions;
   http: typeof http;
+  inbox: typeof inbox;
+  "lib/association": typeof lib_association;
   "lib/documentAccess": typeof lib_documentAccess;
   "lib/hash": typeof lib_hash;
+  "lib/mockPdfBase64": typeof lib_mockPdfBase64;
   "lib/pdf/types": typeof lib_pdf_types;
   "lib/permissions": typeof lib_permissions;
   "lib/providers/boxMock": typeof lib_providers_boxMock;
@@ -67,6 +77,9 @@ declare const fullApi: ApiFromModules<{
   "lib/providers/ghlTypes": typeof lib_providers_ghlTypes;
   "lib/runTransitions": typeof lib_runTransitions;
   organizations: typeof organizations;
+  outbound: typeof outbound;
+  pov: typeof pov;
+  povSteps: typeof povSteps;
   runSteps: typeof runSteps;
   runs: typeof runs;
   seed: typeof seed;
@@ -74,6 +87,7 @@ declare const fullApi: ApiFromModules<{
   "workflows/assignmentWorkflow": typeof workflows_assignmentWorkflow;
   "workflows/manager": typeof workflows_manager;
   "workflows/onComplete": typeof workflows_onComplete;
+  "workflows/povWorkflow": typeof workflows_povWorkflow;
 }>;
 
 /**

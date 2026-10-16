@@ -11,17 +11,17 @@ Status legend: **Verified** (docs + package types inspected), **Planned** (Phase
 | Convex Workflow | Durable multi-step | Verified | Phase 2; `WorkflowManager` / `defineWorkflow` from `@convex-dev/workflow` |
 | Vercel AI Gateway | Model access from Convex | Verified (deps) | `convexGateway` from `@convex-dev/ai-sdk-provider`; needs Convex env credentials |
 | Chat SDK Redis state | Subscriptions, locks | Verified (deps) | `createRedisState` from `@chat-adapter/state-redis`; requires `REDIS_URL` |
-| Chat SDK Twilio | SMS channel | Verified (package) | `@chat-adapter/twilio@4.42.0`; wiring Phase 4 |
+| Chat SDK Twilio | SMS channel | Verified + wired (MOCK default) | `@chat-adapter/twilio@4.42.0` via `src/lib/channels/bot.ts`; transport only |
 | Chat SDK memory state | Local-only | Verified | `@chat-adapter/state-memory` — **mock/dev only**, not production |
 
 ## Email / SMS
 
 | Provider | Operations needed | Status | Env |
 |---|---|---|---|
-| AgentMail | Provision inbox, receive/send, attachments, thread IDs | Mock | `AGENTMAIL_API_KEY` — live adapter Phase 4 |
-| Twilio | SMS send, inbound webhooks, delivery status, opt-out | Mock | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, messaging credentials |
+| AgentMail | Provision inbox, receive/send, attachments, thread IDs | **Implemented** (MOCK/dry-run default) | `AGENTMAIL_API_KEY`, `AGENTMAIL_WEBHOOK_SECRET`; live send only if `ALLOW_LIVE_OUTBOUND=true` |
+| Twilio / Chat SDK | SMS inbound webhooks, signature verify, opt-out, staff secure-link alerts | **Implemented** (MOCK without Redis+Twilio) | `TWILIO_*`, `REDIS_URL`, `TWILIO_WEBHOOK_URL` |
 
-Outbound default: **dry-run**. Live sends require `ALLOW_LIVE_OUTBOUND=true` **and** explicit authorization.
+Outbound default: **dry-run**. Live sends require `ALLOW_LIVE_OUTBOUND=true` **and** explicit authorization. Never describe MOCK as live.
 
 ## Connectors (Phase 3)
 
@@ -45,7 +45,7 @@ Outbound default: **dry-run**. Live sends require `ALLOW_LIVE_OUTBOUND=true` **a
 - Scopes are independent: write does not imply read ([HighLevel Scopes](https://marketplace.gohighlevel.com/docs/Authorization/Scopes)).
 - Phase 3 allowlisted opportunity patch fields: `name`, `status`, `pipelineStageId`, `monetaryValue`.
 - Live CRM writes remain disabled even if `ALLOW_LIVE_CRM_WRITES=true` (fails closed with message).
-- Delivery ownership with Twilio still undecided — Phase 4 must pick one owner per conversation.
+- Delivery ownership: `channelIdentities.smsDeliveryOwner` is `twilio | ghl` — never both for the same conversation. POV staff alerts use Twilio/Chat SDK path (dry-run).
 
 ## Documents / OCR (Phase 3)
 

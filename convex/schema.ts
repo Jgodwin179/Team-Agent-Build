@@ -96,10 +96,32 @@ export const outboundActionStatusValidator = v.union(
   v.literal("proposed"),
   v.literal("approved"),
   v.literal("claimed"),
+  v.literal("sending"),
   v.literal("dry_run"),
   v.literal("sent"),
   v.literal("failed"),
   v.literal("unknown"),
+);
+
+export const inboxItemKindValidator = v.union(
+  v.literal("inbound_message"),
+  v.literal("assignment"),
+  v.literal("approval"),
+  v.literal("association_review"),
+  v.literal("exception"),
+);
+
+export const inboxItemStatusValidator = v.union(
+  v.literal("unread"),
+  v.literal("open"),
+  v.literal("resolved"),
+  v.literal("dismissed"),
+);
+
+export const associationStatusValidator = v.union(
+  v.literal("pending_review"),
+  v.literal("resolved"),
+  v.literal("dismissed"),
 );
 
 export default defineSchema({
@@ -306,6 +328,8 @@ export default defineSchema({
     decidedAt: v.optional(v.number()),
     decisionNote: v.optional(v.string()),
     outboundActionId: v.optional(v.id("outboundActions")),
+    /** Set atomically when approval is consumed for execution (idempotency). */
+    consumedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -323,9 +347,81 @@ export default defineSchema({
     dryRun: v.boolean(),
     externalId: v.optional(v.string()),
     resultJson: v.optional(v.string()),
+    claimedAt: v.optional(v.number()),
+    claimedBy: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_approval", ["approvalId"])
     .index("by_org_and_status", ["organizationId", "status"]),
+
+  agentInboxes: defineTable({
+    organizationId: v.id("organizations"),
+    provider: v.literal("agentmail"),
+    externalInboxId: v.string(),
+    emailAddress: v.string(),
+    displayName: v.string(),
+    mode: v.union(v.literal("mock"), v.literal("live"), v.literal("dry-run")),
+    routingDealId: v.optional(v.id("deals")),
+    status: v.union(v.literal("active"), v.literal("paused")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_external_inbox", ["externalInboxId"]),
+
+  channelIdentities: defineTable({
+    organizationId: v.id("organizations"),
+    channel: v.union(
+      v.literal("email"),
+      v.literal("sms"),
+      v.literal("web"),
+    ),
+    externalAccount: v.string(),
+    linkedAuthUserId: v.optional(v.string()),
+    linkedDealId: v.optional(v.id("deals")),
+    /** sms delivery owner: twilio | ghl — never both for same conversation */
+    smsDeliveryOwner: v.optional(
+      v.union(v.literal("twilio"), v.literal("ghl")),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_and_channel", ["organizationId", "channel"])
+    .index("by_org_external", ["organizationId", "externalAccount"]),
+
+  inboxItems: defineTable({
+    organizationId: v.id("organizations"),
+    kind: inboxItemKindValidator,
+    status: inboxItemStatusValidator,
+    title: v.string(),
+    summary: v.string(),
+    dealId: v.optional(v.id("deals")),
+    runId: v.optional(v.id("runs")),
+    approvalId: v.optional(v.id("approvals")),
+    associationReviewId: v.optional(v.id("associationReviews")),
+    inboundEventId: v.optional(v.id("inboundEvents")),
+    assigneeAuthUserId: v.optional(v.string()),
+    secureLinkPath: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_and_status", ["organizationId", "status"])
+    .index("by_org_and_kind", ["organizationId", "kind"])
+    .index("by_run", ["runId"]),
+
+  associationReviews: defineTable({
+    organizationId: v.id("organizations"),
+    inboundEventId: v.id("inboundEvents"),
+    runId: v.optional(v.id("runs")),
+    candidateDealIds: v.array(v.id("deals")),
+    reason: v.string(),
+    status: associationStatusValidator,
+    resolvedDealId: v.optional(v.id("deals")),
+    resolvedByAuthUserId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_and_status", ["organizationId", "status"])
+    .index("by_inbound_event", ["inboundEventId"]),
 });

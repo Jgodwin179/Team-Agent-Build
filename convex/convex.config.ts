@@ -17,10 +17,17 @@ const app = defineApp({
     GHL_LOCATION_ID: v.optional(v.string()),
     /** Force GHL mock even when keys exist. */
     GHL_FORCE_MOCK: v.optional(v.union(v.literal("true"), v.literal("false"))),
-    /** Never enable in Phase 3 without explicit authorization. */
+    /** Never enable without explicit authorization. */
     ALLOW_LIVE_CRM_WRITES: v.optional(
       v.union(v.literal("true"), v.literal("false")),
     ),
+    ALLOW_LIVE_OUTBOUND: v.optional(
+      v.union(v.literal("true"), v.literal("false")),
+    ),
+    AGENTMAIL_API_KEY: v.optional(v.string()),
+    AGENTMAIL_WEBHOOK_SECRET: v.optional(v.string()),
+    TWILIO_ACCOUNT_SID: v.optional(v.string()),
+    TWILIO_AUTH_TOKEN: v.optional(v.string()),
   },
 });
 

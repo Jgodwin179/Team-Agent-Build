@@ -12,6 +12,12 @@ export interface ProviderHealth {
   message: string;
 }
 
+export interface EmailSendResult {
+  externalId: string;
+  threadId?: string;
+  status: "sent" | "dry-run" | "mock" | "unknown";
+}
+
 export interface EmailProvider {
   readonly name: string;
   readonly mode: ProviderMode;
@@ -20,8 +26,22 @@ export interface EmailProvider {
     subject: string;
     text: string;
     html?: string;
+    fromInboxId?: string;
     idempotencyKey?: string;
-  }): Promise<{ externalId: string; status: "sent" | "dry-run" | "mock" }>;
+  }): Promise<EmailSendResult>;
+  /**
+   * Provision or ensure one agent inbox. Live AgentMail uses POST /v0/inboxes
+   * with optional client_id for idempotent retries (docs.agentmail.to).
+   */
+  ensureInbox?(input: {
+    clientId: string;
+    displayName?: string;
+  }): Promise<{ inboxId: string; emailAddress: string; mode: ProviderMode }>;
+}
+
+export interface SmsSendResult {
+  externalId: string;
+  status: "sent" | "dry-run" | "mock" | "unknown" | "suppressed";
 }
 
 export interface SmsProvider {
@@ -31,5 +51,5 @@ export interface SmsProvider {
     to: string;
     body: string;
     idempotencyKey?: string;
-  }): Promise<{ externalId: string; status: "sent" | "dry-run" | "mock" }>;
+  }): Promise<SmsSendResult>;
 }

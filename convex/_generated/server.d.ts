@@ -30,13 +30,18 @@ import type { DataModel } from "./dataModel.js";
 type Env = {
   readonly CONVEX_CLOUD_URL: string;
   readonly CONVEX_SITE_URL: string;
+  readonly AGENTMAIL_API_KEY: string | undefined;
+  readonly AGENTMAIL_WEBHOOK_SECRET: string | undefined;
   readonly ALLOW_LIVE_CRM_WRITES: "true" | "false" | undefined;
+  readonly ALLOW_LIVE_OUTBOUND: "true" | "false" | undefined;
   readonly BETTER_AUTH_SECRET: string;
   readonly COMPOSIO_API_KEY: string | undefined;
   readonly GHL_API_KEY: string | undefined;
   readonly GHL_FORCE_MOCK: "true" | "false" | undefined;
   readonly GHL_LOCATION_ID: string | undefined;
   readonly SITE_URL: string;
+  readonly TWILIO_ACCOUNT_SID: string | undefined;
+  readonly TWILIO_AUTH_TOKEN: string | undefined;
   readonly USE_AI_GATEWAY: "true" | "false" | undefined;
 };
 

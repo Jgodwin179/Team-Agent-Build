@@ -2,6 +2,7 @@
 
 import { getChatSdkHealth } from "@/lib/channels/chat";
 import { getEmailProviderHealth } from "@/lib/providers/email";
+import { getSmsProviderHealth } from "@/lib/providers/sms";
 
 export function ModeBanner({
   outboundDryRun,
@@ -12,6 +13,7 @@ export function ModeBanner({
 }) {
   const email = getEmailProviderHealth();
   const chat = getChatSdkHealth();
+  const sms = getSmsProviderHealth();
 
   return (
     <div className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-950">
@@ -28,12 +30,9 @@ export function ModeBanner({
             are wired.
           </li>
         )}
-        <li>
-          Email: {email.message}
-        </li>
-        <li>
-          Chat SDK: {chat.message}
-        </li>
+        <li>Email: {email.message}</li>
+        <li>SMS: {sms.message}</li>
+        <li>Chat SDK: {chat.message}</li>
       </ul>
     </div>
   );
