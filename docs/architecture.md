@@ -42,6 +42,13 @@
 
 Ingress → verify → persist `inboundEvents` (dedupe) → workflow → agent steps → approval → outbound ledger. Run statuses: `queued`, `running`, `waiting_for_approval`, `waiting_for_external`, `succeeded`, `failed`, `cancel_requested`, `canceled`.
 
+## Schedules & delegation (Phase 5)
+
+- Schedules persist in Convex with IANA timezone (default `America/New_York`), wall-clock recurrence, missed-run + concurrency policies, and deterministic occurrence keys.
+- Next fire is armed with `ctx.scheduler.runAt`; disable/reschedule cancels the prior job then re-arms.
+- Org `settings.schedulesEnabled` defaults **false** in development.
+- Coordinator runs spawn bounded specialist children (`parentRunId` tree); cancel propagates; optional child failure yields a partial result with `missingWorkJson`.
+
 ## Directory map
 
 ```
