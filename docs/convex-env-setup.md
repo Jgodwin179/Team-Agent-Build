@@ -11,6 +11,16 @@ npx convex env set BETTER_AUTH_SECRET=$(openssl rand -base64 32)
 npx convex env set SITE_URL http://localhost:3000
 # Optional: live models (default is labeled MOCK via mockModel)
 # npx convex env set USE_AI_GATEWAY true
+
+# Optional Phase 3: live Box via Composio (default is labeled MOCK Box fixture)
+# npx convex env set COMPOSIO_API_KEY <key>
+# Then in /connections: Connect MOCK box → Attach live ref (connected account id + composio user id)
+
+# Optional Phase 3: live GHL reads (writes stay dry-run)
+# npx convex env set GHL_API_KEY <token>
+# npx convex env set GHL_LOCATION_ID <locationId>
+# npx convex env set GHL_FORCE_MOCK true   # optional: force MOCK even with keys
+# Do NOT set ALLOW_LIVE_CRM_WRITES in Phase 3
 ```
 
 `.env.local` (written by CLI) should include:

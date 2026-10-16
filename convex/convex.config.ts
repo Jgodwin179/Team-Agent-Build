@@ -10,6 +10,17 @@ const app = defineApp({
     SITE_URL: v.string(),
     /** Set to "true" only when Convex AI Gateway credentials are configured. */
     USE_AI_GATEWAY: v.optional(v.union(v.literal("true"), v.literal("false"))),
+    /** Composio managed connectors (Phase 3). Unset → labeled MOCK Box path. */
+    COMPOSIO_API_KEY: v.optional(v.string()),
+    /** GHL private integration / location token (Phase 3 reads). */
+    GHL_API_KEY: v.optional(v.string()),
+    GHL_LOCATION_ID: v.optional(v.string()),
+    /** Force GHL mock even when keys exist. */
+    GHL_FORCE_MOCK: v.optional(v.union(v.literal("true"), v.literal("false"))),
+    /** Never enable in Phase 3 without explicit authorization. */
+    ALLOW_LIVE_CRM_WRITES: v.optional(
+      v.union(v.literal("true"), v.literal("false")),
+    ),
   },
 });
 

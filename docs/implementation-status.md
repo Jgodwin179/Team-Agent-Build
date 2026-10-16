@@ -1,6 +1,6 @@
 # Implementation status
 
-Last updated: Phase 2 complete (local Convex); durable assignment smoke passed.
+Last updated: Phase 3 complete (local Convex); connectors/documents smoke pending in this session.
 
 ## Phase summary
 
@@ -9,7 +9,7 @@ Last updated: Phase 2 complete (local Convex); durable assignment smoke passed.
 | 0 — Discovery & compatibility | **Complete** | Pins documented; `.env.example` + `docs/convex-env-setup.md` |
 | 1 — Authenticated workspace | **Complete (local)** | Better Auth, orgs/memberships, permissions, dashboard/deals/runs |
 | 2 — Durable agent slice | **Complete (local)** | Web assignment → event/run → Workflow → read-only tool → bounded agent → result → live UI; cancel/resume/usage |
-| 3 — Connectors & documents | Not started | |
+| 3 — Connectors & documents | **Complete (local / MOCK default)** | Connections UI, Box file path (Composio when keyed), PDF citations, GHL read/propose/approve/dry-run |
 | 4 — Email/SMS POV flow | Not started | Mock EmailProvider + Chat SDK health stubs only |
 | 5 — Schedules & subagents | Not started | |
 | 6 — Launch readiness | Not started | |
@@ -52,31 +52,49 @@ Last updated: Phase 2 complete (local Convex); durable assignment smoke passed.
 - [x] Live UI: `/assignments`, `/runs/[runId]` (status, result, tools, usage)
 - [x] Manual smoke: submit “Phase 2 Durable Brief” → succeeded + MOCK result + listOrgDeals + usage
 
-### Phase 2 verification commands
+## Phase 3 deliverables
+
+- [x] Connection onboarding UI (`/connections`) with labeled **MOCK** connect + live Composio credential-ref attach
+- [x] Schema: `connections`, `documents`, `documentChunks`, `approvals`, `outboundActions`
+- [x] Typed Box `FileSource` wrappers; Composio tools verified: `BOX_LIST_ITEMS_IN_FOLDER`, `BOX_DOWNLOAD_FILE` (toolkit `20260826_00`)
+- [x] Real file source path: Box via Composio when `COMPOSIO_API_KEY` + managed ref; otherwise MOCK fixture files
+- [x] PDF ingestion with page citations (`pdf-parse`); OCR fallback clearly labeled **MOCK OCR**
+- [x] GHL read tools (`getContact`, `listOpportunities`) + `proposeUpdate` → approval → dry-run execute
+- [x] No live CRM writes (fails closed even if `ALLOW_LIVE_CRM_WRITES=true`)
+- [x] Fixtures documented: denied scopes, pagination, expired auth, cross-deal retrieval (`tests/phase3/fixtures.md`)
+- [x] `docs/provider-capabilities.md` + this status file updated
+- [ ] Live Composio/GHL smoke — **blocked** without credentials (MOCK path verified instead)
+
+### Phase 3 verification commands
 
 - `pnpm typecheck` — pass
 - `pnpm lint` — pass
-- `npx tsc -p convex/tsconfig.json --noEmit` — pass
+- `npx convex codegen` / Convex tsc — pass
 - `pnpm build` — pass
-- Browser smoke — pass (screenshots in Project store `media/phase2-*`)
+- `node tests/phase3/mock-adapters.test.mjs` — pass
+- Browser smoke — Connections / Documents / Approvals (see Project store `media/phase3-*`)
 
-### Phase 2 design notes
+### Phase 3 design notes
 
-- Read-only tool runs as an explicit durable workflow mutation step (idempotent), then the agent consumes its JSON in-prompt. This keeps resume semantics clean and avoids Agent+tool typing cycles under tsc.
-- Default model is **MOCK**; never presented as live LLM.
+- Provider logic lives in adapters (`convex/lib/providers/*` + `*Actions.ts` with `"use node"`).
+- Business tools (`documents.*`, `crm.*`, `approvals.*`) enforce org auth and never accept client-supplied authority for CRM writes.
+- Approval payload is hashed; execute requires prior approve and defaults to dry-run via org `outboundDryRun`.
 
 ## Credential / setup blockers
 
 | Item | Why needed | Exact setup |
 |---|---|---|
-| GitHub repo + `gh` auth | Open PR / push branch | Create empty GitHub repo; `gh auth login`; add `origin`; push `cursor/phase-0-1-workspace-f2cf` |
+| GitHub repo + `gh` auth | Open PR / push branch | Create empty GitHub repo; `gh auth login`; add `origin`; push `cursor/phase-3-connectors-f2cf` |
 | Convex cloud project (optional) | Shared dashboard, webhooks | See `docs/convex-env-setup.md` |
 | `BETTER_AUTH_SECRET` | Auth crypto | `npx convex env set BETTER_AUTH_SECRET=$(openssl rand -base64 32)` |
 | `SITE_URL` | Better Auth base URL | `npx convex env set SITE_URL http://localhost:3000` |
-| `USE_AI_GATEWAY=true` + gateway creds | Live models (Phase 2 optional) | Configure Convex AI Gateway, then `npx convex env set USE_AI_GATEWAY true`. Default remains MOCK. |
+| `USE_AI_GATEWAY=true` + gateway creds | Live models (optional) | Configure Convex AI Gateway, then `npx convex env set USE_AI_GATEWAY true` |
+| `COMPOSIO_API_KEY` | Live Box via Composio | `npx convex env set COMPOSIO_API_KEY ...` then attach connected account id in UI |
+| `GHL_API_KEY` + `GHL_LOCATION_ID` | Live GHL reads | `npx convex env set GHL_API_KEY ...` / `GHL_LOCATION_ID ...` |
 | `REDIS_URL` | Phase 4 Chat SDK | Provision Upstash/Redis Cloud; set on Vercel |
-| AgentMail / Twilio / Composio / GHL | Phases 3–4 | Placeholders in `.env.example`; keep `ALLOW_LIVE_OUTBOUND` unset |
+| AgentMail / Twilio | Phase 4 | Placeholders in `.env.example`; keep `ALLOW_LIVE_OUTBOUND` unset |
+| OCR vendor | Scanned PDF quality | Keep MOCK OCR until vendor chosen |
 
-## Next up (Phase 3)
+## Next up (Phase 4)
 
-Connection onboarding, one real file source, PDF ingestion with citations, GHL read/proposed-update tools.
+AgentMail + Twilio/Chat SDK + Redis state; seller PDF proof-of-value flow with approval consumption and notifications. Keep CRM/email outbound dry-run until authorized.
