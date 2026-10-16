@@ -12,6 +12,7 @@ import { approvalStatusValidator } from "./schema";
 
 const approvalDetail = v.object({
   _id: v.id("approvals"),
+  _creationTime: v.number(),
   organizationId: v.id("organizations"),
   runId: v.optional(v.id("runs")),
   dealId: v.optional(v.id("deals")),
@@ -188,7 +189,12 @@ export const executeApproved = action({
         approval.decidedByAuthUserId ?? approval.proposedByAuthUserId,
     });
 
-    return { ...result, dryRun };
+    return {
+      status: result.status,
+      externalId: result.externalId,
+      detail: result.detail,
+      dryRun,
+    };
   },
 });
 
