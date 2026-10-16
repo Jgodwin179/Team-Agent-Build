@@ -124,6 +124,43 @@ export const associationStatusValidator = v.union(
   v.literal("dismissed"),
 );
 
+export const missedRunPolicyValidator = v.union(
+  v.literal("skip"),
+  v.literal("catch_up_one"),
+  v.literal("catch_up_all"),
+);
+
+export const concurrencyPolicyValidator = v.union(
+  /** Default: do not start if a prior occurrence of this schedule is still active. */
+  v.literal("forbid"),
+  v.literal("skip_if_running"),
+  v.literal("allow_overlap"),
+);
+
+export const scheduleRecurrenceValidator = v.union(
+  v.literal("once"),
+  v.literal("daily"),
+  v.literal("weekly"),
+);
+
+export const occurrenceStatusValidator = v.union(
+  v.literal("scheduled"),
+  v.literal("claimed"),
+  v.literal("running"),
+  v.literal("succeeded"),
+  v.literal("failed"),
+  v.literal("skipped"),
+  v.literal("canceled"),
+);
+
+export const specialistTypeValidator = v.union(
+  v.literal("coordinator"),
+  v.literal("research"),
+  v.literal("documents"),
+  v.literal("crm"),
+  v.literal("communications"),
+);
+
 export default defineSchema({
   organizations: defineTable({
     name: v.string(),
@@ -135,6 +172,12 @@ export default defineSchema({
     settings: v.object({
       defaultBudgetTokens: v.optional(v.number()),
       maxAgentSteps: v.optional(v.number()),
+      /** Dev default false — schedules stay disabled until explicitly enabled. */
+      schedulesEnabled: v.optional(v.boolean()),
+      maxDelegationDepth: v.optional(v.number()),
+      maxChildrenPerRun: v.optional(v.number()),
+      allowRecursiveDelegation: v.optional(v.boolean()),
+      maxParallelChildren: v.optional(v.number()),
     }),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -173,11 +216,17 @@ export default defineSchema({
     dealId: v.optional(v.id("deals")),
     parentRunId: v.optional(v.id("runs")),
     inboundEventId: v.optional(v.id("inboundEvents")),
+    scheduleId: v.optional(v.id("schedules")),
+    occurrenceKey: v.optional(v.string()),
     workflowId: v.optional(v.string()),
     threadId: v.optional(v.string()),
     principalAuthUserId: v.string(),
     title: v.string(),
     assignmentPrompt: v.optional(v.string()),
+    specialistType: v.optional(specialistTypeValidator),
+    /** 0 = root/coordinator; children increment. */
+    depth: v.optional(v.number()),
+    optionalChild: v.optional(v.boolean()),
     status: runStatusValidator,
     budgetTokens: v.optional(v.number()),
     usedTokens: v.optional(v.number()),
@@ -189,6 +238,7 @@ export default defineSchema({
     resultJson: v.optional(v.string()),
     completedSteps: v.optional(v.array(v.string())),
     errorMessage: v.optional(v.string()),
+    missingWorkJson: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     startedAt: v.optional(v.number()),
@@ -197,7 +247,8 @@ export default defineSchema({
     .index("by_org_and_status", ["organizationId", "status"])
     .index("by_org_and_deal", ["organizationId", "dealId"])
     .index("by_parent", ["parentRunId"])
-    .index("by_workflow", ["workflowId"]),
+    .index("by_workflow", ["workflowId"])
+    .index("by_occurrence", ["organizationId", "occurrenceKey"]),
 
   inboundEvents: defineTable({
     organizationId: v.id("organizations"),
@@ -424,4 +475,68 @@ export default defineSchema({
   })
     .index("by_org_and_status", ["organizationId", "status"])
     .index("by_inbound_event", ["inboundEventId"]),
+
+  schedules: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    /** IANA timezone; default America/New_York. Wall-clock recurrence (DST-aware). */
+    timezone: v.string(),
+    recurrence: scheduleRecurrenceValidator,
+    /** Local wall-clock hour 0–23 in timezone. */
+    localHour: v.number(),
+    /** Local wall-clock minute 0–59. */
+    localMinute: v.number(),
+    /** For weekly: 0=Sun … 6=Sat in schedule timezone. */
+    daysOfWeek: v.optional(v.array(v.number())),
+    /** Optional absolute start (UTC ms); once jobs use this as the sole fire time. */
+    startAtUtc: v.optional(v.number()),
+    endAtUtc: v.optional(v.number()),
+    jobPrompt: v.string(),
+    dealId: v.optional(v.id("deals")),
+    /** Auth user who authorized the schedule (service principal / owner). */
+    authorizedByAuthUserId: v.string(),
+    principalAuthUserId: v.string(),
+    enabled: v.boolean(),
+    missedRunPolicy: missedRunPolicyValidator,
+    concurrencyPolicy: concurrencyPolicyValidator,
+    nextOccurrenceAt: v.optional(v.number()),
+    nextOccurrenceKey: v.optional(v.string()),
+    /** Convex scheduler job id for the next fire (cancel/reschedule). */
+    schedulerJobId: v.optional(v.id("_scheduled_functions")),
+    lastFiredAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_org_and_enabled", ["organizationId", "enabled"]),
+
+  scheduleOccurrences: defineTable({
+    organizationId: v.id("organizations"),
+    scheduleId: v.id("schedules"),
+    /** Deterministic: scheduleId + local YYYY-MM-DD + HH:mm + timezone. */
+    occurrenceKey: v.string(),
+    scheduledAt: v.number(),
+    status: occurrenceStatusValidator,
+    runId: v.optional(v.id("runs")),
+    skipReason: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_occurrence_key", ["organizationId", "occurrenceKey"])
+    .index("by_schedule_and_status", ["scheduleId", "status"]),
+
+  eventRules: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    /** Match inboundEvents.eventType (exact). */
+    eventType: v.string(),
+    provider: v.optional(v.string()),
+    enabled: v.boolean(),
+    createRunTitle: v.string(),
+    createRunPrompt: v.string(),
+    dealId: v.optional(v.id("deals")),
+    specialistType: v.optional(specialistTypeValidator),
+    createdByAuthUserId: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_org_and_event_type", ["organizationId", "eventType"]),
 });

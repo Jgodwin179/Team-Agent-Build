@@ -13,11 +13,24 @@ const runReturn = v.object({
   dealId: v.optional(v.id("deals")),
   parentRunId: v.optional(v.id("runs")),
   inboundEventId: v.optional(v.id("inboundEvents")),
+  scheduleId: v.optional(v.id("schedules")),
+  occurrenceKey: v.optional(v.string()),
   workflowId: v.optional(v.string()),
   threadId: v.optional(v.string()),
   principalAuthUserId: v.string(),
   title: v.string(),
   assignmentPrompt: v.optional(v.string()),
+  specialistType: v.optional(
+    v.union(
+      v.literal("coordinator"),
+      v.literal("research"),
+      v.literal("documents"),
+      v.literal("crm"),
+      v.literal("communications"),
+    ),
+  ),
+  depth: v.optional(v.number()),
+  optionalChild: v.optional(v.boolean()),
   status: runStatusValidator,
   budgetTokens: v.optional(v.number()),
   usedTokens: v.optional(v.number()),
@@ -27,6 +40,7 @@ const runReturn = v.object({
   resultJson: v.optional(v.string()),
   completedSteps: v.optional(v.array(v.string())),
   errorMessage: v.optional(v.string()),
+  missingWorkJson: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
   startedAt: v.optional(v.number()),
@@ -239,16 +253,31 @@ export const requestCancel = mutation({
       throw new Error(`Cannot cancel a ${run.status} run`);
     }
     const now = Date.now();
-    await ctx.db.patch("runs", args.runId, {
-      status: "cancel_requested",
-      updatedAt: now,
-    });
-
-    if (run.workflowId) {
-      try {
-        await workflowManager.cancel(ctx, run.workflowId as WorkflowId);
-      } catch (error) {
-        console.error("Workflow cancel failed", error);
+    // Propagate cancel to the run tree (parent + descendants).
+    const toVisit = [args.runId];
+    const seen = new Set<string>();
+    while (toVisit.length > 0) {
+      const id = toVisit.pop()!;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const node = await ctx.db.get("runs", id);
+      if (!node || node.organizationId !== args.organizationId) continue;
+      const children = await ctx.db
+        .query("runs")
+        .withIndex("by_parent", (q) => q.eq("parentRunId", id))
+        .collect();
+      for (const child of children) toVisit.push(child._id);
+      if (isTerminal(node.status)) continue;
+      await ctx.db.patch("runs", id, {
+        status: "cancel_requested",
+        updatedAt: now,
+      });
+      if (node.workflowId) {
+        try {
+          await workflowManager.cancel(ctx, node.workflowId as WorkflowId);
+        } catch (error) {
+          console.error("Workflow cancel failed", error);
+        }
       }
     }
 
@@ -258,6 +287,7 @@ export const requestCancel = mutation({
       action: "run.cancel_requested",
       targetType: "runs",
       targetId: args.runId,
+      metadata: JSON.stringify({ propagated: true }),
       createdAt: now,
     });
     return null;

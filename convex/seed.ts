@@ -42,6 +42,11 @@ export const ensureDevWorkspace = mutation({
         settings: {
           defaultBudgetTokens: 50_000,
           maxAgentSteps: 12,
+          schedulesEnabled: false,
+          maxDelegationDepth: 1,
+          maxChildrenPerRun: 4,
+          maxParallelChildren: 2,
+          allowRecursiveDelegation: false,
         },
         createdAt: now,
         updatedAt: now,
@@ -66,6 +71,11 @@ export const ensureDevWorkspace = mutation({
         settings: {
           defaultBudgetTokens: 25_000,
           maxAgentSteps: 8,
+          schedulesEnabled: false,
+          maxDelegationDepth: 1,
+          maxChildrenPerRun: 4,
+          maxParallelChildren: 2,
+          allowRecursiveDelegation: false,
         },
         createdAt: now,
         updatedAt: now,

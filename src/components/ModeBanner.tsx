@@ -33,6 +33,10 @@ export function ModeBanner({
         <li>Email: {email.message}</li>
         <li>SMS: {sms.message}</li>
         <li>Chat SDK: {chat.message}</li>
+        <li>
+          Schedules: disabled by default in development (org setting
+          schedulesEnabled=false; no live outbound from schedule runners).
+        </li>
       </ul>
     </div>
   );

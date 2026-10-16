@@ -21,6 +21,7 @@ const NAV = [
   { href: "/assignments", label: "Assignments" },
   { href: "/deals", label: "Deals" },
   { href: "/runs", label: "Runs" },
+  { href: "/schedules", label: "Schedules" },
   { href: "/inbox", label: "Inbox" },
   { href: "/pov", label: "POV" },
   { href: "/connections", label: "Connections" },

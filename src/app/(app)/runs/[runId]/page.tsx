@@ -12,6 +12,10 @@ export default function RunDetailPage() {
   const runId = params.runId as Id<"runs">;
   const { organizationId, org } = useActiveOrg();
   const run = useQuery(api.runs.get, { organizationId, runId });
+  const children = useQuery(api.delegation.listChildren, {
+    organizationId,
+    parentRunId: runId,
+  });
   const tools = useQuery(api.runs.listToolExecutions, {
     organizationId,
     runId,
@@ -48,6 +52,14 @@ export default function RunDetailPage() {
           <p className="mt-1 text-sm text-slate-600">
             Status:{" "}
             <span className="uppercase tracking-wide">{run.status}</span>
+            {run.specialistType ? (
+              <>
+                {" "}
+                · Specialist:{" "}
+                <span className="font-medium">{run.specialistType}</span>
+                {run.depth != null ? ` · depth ${run.depth}` : null}
+              </>
+            ) : null}
             {run.modelMode ? (
               <>
                 {" "}
@@ -58,6 +70,14 @@ export default function RunDetailPage() {
               </>
             ) : null}
           </p>
+          {run.parentRunId ? (
+            <p className="mt-1 text-xs">
+              Parent:{" "}
+              <Link href={`/runs/${run.parentRunId}`} className="underline">
+                {run.parentRunId}
+              </Link>
+            </p>
+          ) : null}
         </div>
         <div className="flex gap-2">
           {canWrite &&
@@ -91,10 +111,42 @@ export default function RunDetailPage() {
         </p>
       </section>
 
+      {children && children.length > 0 ? (
+        <section className="rounded border border-slate-200 bg-white p-4 text-sm">
+          <h2 className="font-medium">Child runs</h2>
+          <ul className="mt-2 divide-y divide-slate-100">
+            {children.map((child) => (
+              <li key={child._id} className="flex flex-wrap justify-between gap-2 py-2">
+                <div>
+                  <Link href={`/runs/${child._id}`} className="font-medium underline">
+                    {child.title}
+                  </Link>
+                  <p className="text-xs text-slate-500">
+                    {child.specialistType}
+                    {child.optionalChild ? " · optional" : ""} · {child.status}
+                  </p>
+                  {child.errorMessage ? (
+                    <p className="text-xs text-red-700">{child.errorMessage}</p>
+                  ) : null}
+                </div>
+                <span className="text-xs text-slate-500">
+                  tokens {child.usedTokens ?? 0}/{child.budgetTokens ?? "—"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="rounded border border-slate-200 bg-white p-4 text-sm">
         <h2 className="font-medium">Result</h2>
         {run.errorMessage ? (
           <p className="mt-2 text-red-700">{run.errorMessage}</p>
+        ) : null}
+        {run.missingWorkJson ? (
+          <p className="mt-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-amber-950">
+            Missing work: {run.missingWorkJson}
+          </p>
         ) : null}
         <p className="mt-2 whitespace-pre-wrap text-slate-700">
           {run.resultSummary ??
