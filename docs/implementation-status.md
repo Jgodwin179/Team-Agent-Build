@@ -1,6 +1,6 @@
 # Implementation status
 
-Last updated: Phase 0 + Phase 1 scaffold complete (local Convex).
+Last updated: Phase 0 + Phase 1 complete (local Convex); UI smoke test passed.
 
 ## Phase summary
 
