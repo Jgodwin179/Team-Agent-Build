@@ -8,6 +8,7 @@ import {
 
 const inboxItemReturn = v.object({
   _id: v.id("inboxItems"),
+  _creationTime: v.number(),
   organizationId: v.id("organizations"),
   kind: inboxItemKindValidator,
   status: inboxItemStatusValidator,
@@ -45,7 +46,24 @@ export const list = query({
     if (args.kind) {
       rows = rows.filter((r) => r.kind === args.kind);
     }
-    return rows.sort((a, b) => b.createdAt - a.createdAt);
+    return rows
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((r) => ({
+        _id: r._id,
+        _creationTime: r._creationTime,
+        organizationId: r.organizationId,
+        kind: r.kind,
+        status: r.status,
+        title: r.title,
+        summary: r.summary,
+        dealId: r.dealId,
+        runId: r.runId,
+        approvalId: r.approvalId,
+        associationReviewId: r.associationReviewId,
+        secureLinkPath: r.secureLinkPath,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+      }));
   },
 });
 

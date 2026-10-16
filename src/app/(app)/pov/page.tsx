@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { useActiveOrg } from "@/components/AppShell";
@@ -12,6 +12,8 @@ export default function PovPage() {
   const deals = useQuery(api.deals.list, { organizationId });
   const outbound = useQuery(api.outbound.listForOrg, { organizationId });
   const startFlow = useMutation(api.pov.startSellerPdfFlow);
+  const decide = useMutation(api.approvals.decide);
+  const executeApproved = useAction(api.approvals.executeApproved);
   const [subject, setSubject] = useState("");
   const [forceAmbiguous, setForceAmbiguous] = useState(false);
   const [notifyPhone, setNotifyPhone] = useState("+15555550199");
@@ -22,12 +24,19 @@ export default function PovPage() {
     workflowId: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [execResult, setExecResult] = useState<string | null>(null);
   const canWrite = org.role !== "viewer";
 
   const flowStatus = useQuery(
     api.pov.getFlowStatus,
     result
       ? { organizationId, runId: result.runId }
+      : "skip",
+  );
+  const approvalDetail = useQuery(
+    api.approvals.get,
+    flowStatus?.approvalId
+      ? { organizationId, approvalId: flowStatus.approvalId }
       : "skip",
   );
 
@@ -197,10 +206,99 @@ export default function PovPage() {
                 href={`/approvals?approvalId=${flowStatus.approvalId}`}
                 className="underline"
               >
-                Approve payload
+                Approvals page
               </Link>
             ) : null}
           </div>
+          {approvalDetail ? (
+            <div className="mt-3 space-y-2 rounded border border-slate-100 bg-slate-50 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Approval · {approvalDetail.status}
+              </p>
+              <pre className="max-h-28 overflow-auto text-xs">
+                {approvalDetail.actionPayloadJson}
+              </pre>
+              <div className="flex flex-wrap gap-2">
+                {approvalDetail.status === "pending" && canWrite ? (
+                  <button
+                    type="button"
+                    className="rounded bg-emerald-800 px-3 py-1.5 text-xs text-white"
+                    onClick={() => {
+                      setError(null);
+                      void decide({
+                        organizationId,
+                        approvalId: approvalDetail._id,
+                        decision: "approved",
+                        expectedPayloadHash: approvalDetail.actionPayloadHash,
+                      }).catch((err: unknown) =>
+                        setError(
+                          err instanceof Error ? err.message : "Approve failed",
+                        ),
+                      );
+                    }}
+                  >
+                    Approve exact payload
+                  </button>
+                ) : null}
+                {approvalDetail.status === "approved" && canWrite ? (
+                  <button
+                    type="button"
+                    className="rounded border border-amber-700 px-3 py-1.5 text-xs text-amber-900"
+                    onClick={() => {
+                      setError(null);
+                      void (async () => {
+                        try {
+                          const exec = await executeApproved({
+                            organizationId,
+                            approvalId: approvalDetail._id,
+                          });
+                          setExecResult(
+                            `Execute: ${exec.status} dryRun=${exec.dryRun} — ${exec.detail}`,
+                          );
+                        } catch (err) {
+                          setError(
+                            err instanceof Error
+                              ? err.message
+                              : "Execute failed",
+                          );
+                        }
+                      })();
+                    }}
+                  >
+                    Dry-run execute
+                  </button>
+                ) : null}
+                {approvalDetail.status === "executed" ? (
+                  <button
+                    type="button"
+                    className="rounded border border-slate-300 px-3 py-1.5 text-xs"
+                    onClick={() => {
+                      setError(null);
+                      void (async () => {
+                        try {
+                          await executeApproved({
+                            organizationId,
+                            approvalId: approvalDetail._id,
+                          });
+                        } catch (err) {
+                          setError(
+                            err instanceof Error
+                              ? err.message
+                              : "Repeat execute failed",
+                          );
+                        }
+                      })();
+                    }}
+                  >
+                    Repeat execute (expect claim error)
+                  </button>
+                ) : null}
+              </div>
+              {execResult ? (
+                <p className="text-sm text-slate-700">{execResult}</p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
