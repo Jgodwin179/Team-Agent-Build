@@ -37,16 +37,25 @@ Last updated: Phase 0 + Phase 1 complete (local Convex); UI smoke test passed.
 - [x] Dev seed: Demo Brokerage + Peer Firm test orgs, outbound dry-run ON
 - [x] UI banner labeling mock/dry-run when credentials missing
 - [ ] Automated integration tests for two-org isolation / viewer writes / revoke (manual checklist below)
+- [x] Manual UI smoke: sign-up → seed orgs → dry-run banner → create deal → runs list
 - [ ] GitHub PR — **blocked**: no repository attached to this agent run; `gh` not authenticated
 
 ### Manual verification checklist (Phase 1)
 
-1. Sign up user A → auto-seed attaches to both test orgs as owner.
-2. Create a deal in org A; confirm it appears only for that org selector.
-3. Call `deals.get` / `runs.get` with another org’s ID → expect null/unauthorized.
-4. Set membership to `viewer` → create deal/run should fail with role error.
-5. Revoke membership → subsequent org queries deny access.
-6. Banner shows MOCK/DRY-RUN; no live email/SMS attempted.
+1. [x] Sign up user A → auto-seed attaches to both test orgs as owner (UI smoke).
+2. [x] Create a deal in org A (UI smoke: “UI Smoke Deal”).
+3. [ ] Call `deals.get` / `runs.get` with another org’s ID → expect null/unauthorized.
+4. [ ] Set membership to `viewer` → create deal/run should fail with role error.
+5. [ ] Revoke membership → subsequent org queries deny access.
+6. [x] Banner shows MOCK/DRY-RUN; no live email/SMS attempted.
+
+### Verification commands run
+
+- `pnpm typecheck` — pass
+- `pnpm lint` — pass
+- `pnpm build` — pass
+- Better Auth sign-up via `/api/auth/sign-up/email` — 200 + session cookies
+- Browser UI smoke — pass (screenshots under Project store `media/`)
 
 ## Credential / setup blockers
 
