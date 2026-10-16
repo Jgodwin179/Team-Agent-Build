@@ -1,6 +1,6 @@
 # Implementation status
 
-Last updated: Phase 4 complete (local Convex); POV dry-run + webhook fixtures verified.
+Last updated: Phase 4 complete (local Convex); POV browser smoke 7/7 after inbox validator fix.
 
 ## Phase summary
 
@@ -42,17 +42,18 @@ See prior sections in git history / handoffs (`internal/phase-*-handoff.md`). De
 - [x] UI: `/inbox`, `/pov`; ModeBanner shows email/SMS/Chat health
 - [x] Fixtures: `tests/phase4/fixtures.md` + `tests/phase4/communications.test.mjs` (duplicate delivery, repeated approval, invalid signatures, ambiguous send, fuzzy association)
 - [x] Docs updated; handoff at Project store `internal/phase-4-handoff.md`
+- [x] MOCK browser smoke — ModeBanner / POV / inbox / approve / dry-run execute / repeat-click / ledger (7/7)
 - [ ] Live AgentMail/Twilio/Redis smoke — **blocked** without credentials + explicit `ALLOW_LIVE_OUTBOUND`
 - [ ] GitHub PR — **blocked**: no repository remote / `gh` auth
 
 ### Phase 4 verification commands
 
 - `pnpm typecheck` — pass
-- `pnpm lint` — (run before handoff)
+- `pnpm lint` — pass
 - `npx convex codegen` — pass
-- `pnpm build` — (run before handoff)
+- `pnpm build` — pass
 - `node tests/phase4/communications.test.mjs` — pass
-- Browser smoke — POV → inbox → approve → dry-run execute (screenshots in Project store `media/phase4-*`)
+- Browser smoke — 7/7 (screenshots + recording in Project store `media/phase4-*`)
 
 ### Phase 4 design notes
 

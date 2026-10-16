@@ -163,6 +163,11 @@ export const executeApproved = action({
       approvalId: args.approvalId,
     });
     if (!approval) throw new Error("Approval not found");
+    if (approval.status === "executed" || approval.consumedAt) {
+      throw new Error(
+        "Approval already claimed/consumed (repeated click ignored)",
+      );
+    }
     if (approval.status !== "approved") {
       throw new Error(
         `Cannot execute approval in status ${approval.status}; approve first`,
