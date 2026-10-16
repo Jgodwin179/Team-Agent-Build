@@ -8,6 +8,8 @@ const app = defineApp({
   env: {
     BETTER_AUTH_SECRET: v.string(),
     SITE_URL: v.string(),
+    /** Set to "true" only when Convex AI Gateway credentials are configured. */
+    USE_AI_GATEWAY: v.optional(v.union(v.literal("true"), v.literal("false"))),
   },
 });
 

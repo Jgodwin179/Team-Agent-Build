@@ -8,13 +8,21 @@
  * @module
  */
 
+import type * as agents_researchAgent from "../agents/researchAgent.js";
+import type * as assignments from "../assignments.js";
 import type * as auth from "../auth.js";
 import type * as deals from "../deals.js";
 import type * as http from "../http.js";
 import type * as lib_permissions from "../lib/permissions.js";
+import type * as lib_runTransitions from "../lib/runTransitions.js";
 import type * as organizations from "../organizations.js";
+import type * as runSteps from "../runSteps.js";
 import type * as runs from "../runs.js";
 import type * as seed from "../seed.js";
+import type * as tools from "../tools.js";
+import type * as workflows_assignmentWorkflow from "../workflows/assignmentWorkflow.js";
+import type * as workflows_manager from "../workflows/manager.js";
+import type * as workflows_onComplete from "../workflows/onComplete.js";
 
 import type {
   ApiFromModules,
@@ -23,13 +31,21 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "agents/researchAgent": typeof agents_researchAgent;
+  assignments: typeof assignments;
   auth: typeof auth;
   deals: typeof deals;
   http: typeof http;
   "lib/permissions": typeof lib_permissions;
+  "lib/runTransitions": typeof lib_runTransitions;
   organizations: typeof organizations;
+  runSteps: typeof runSteps;
   runs: typeof runs;
   seed: typeof seed;
+  tools: typeof tools;
+  "workflows/assignmentWorkflow": typeof workflows_assignmentWorkflow;
+  "workflows/manager": typeof workflows_manager;
+  "workflows/onComplete": typeof workflows_onComplete;
 }>;
 
 /**

@@ -9,6 +9,8 @@ pnpm install
 npx convex dev --once   # or keep `npx convex dev` running
 npx convex env set BETTER_AUTH_SECRET=$(openssl rand -base64 32)
 npx convex env set SITE_URL http://localhost:3000
+# Optional: live models (default is labeled MOCK via mockModel)
+# npx convex env set USE_AI_GATEWAY true
 ```
 
 `.env.local` (written by CLI) should include:

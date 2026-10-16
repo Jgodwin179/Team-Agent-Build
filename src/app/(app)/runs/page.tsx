@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -106,7 +107,11 @@ export default function RunsPage() {
           <tbody className="divide-y divide-slate-100">
             {runs.map((run) => (
               <tr key={run._id}>
-                <td className="px-3 py-2">{run.title}</td>
+                <td className="px-3 py-2">
+                  <Link href={`/runs/${run._id}`} className="underline">
+                    {run.title}
+                  </Link>
+                </td>
                 <td className="px-3 py-2 text-xs uppercase tracking-wide">
                   {run.status}
                 </td>

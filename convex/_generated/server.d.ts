@@ -32,6 +32,7 @@ type Env = {
   readonly CONVEX_SITE_URL: string;
   readonly BETTER_AUTH_SECRET: string;
   readonly SITE_URL: string;
+  readonly USE_AI_GATEWAY: "true" | "false" | undefined;
 };
 
 /**

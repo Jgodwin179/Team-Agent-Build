@@ -37,6 +37,19 @@ export const runStatusValidator = v.union(
   v.literal("canceled"),
 );
 
+export const inboundEventStatusValidator = v.union(
+  v.literal("received"),
+  v.literal("claimed"),
+  v.literal("processing"),
+  v.literal("succeeded"),
+  v.literal("failed"),
+);
+
+export const toolExecutionStatusValidator = v.union(
+  v.literal("succeeded"),
+  v.literal("failed"),
+);
+
 export default defineSchema({
   organizations: defineTable({
     name: v.string(),
@@ -85,13 +98,22 @@ export default defineSchema({
     organizationId: v.id("organizations"),
     dealId: v.optional(v.id("deals")),
     parentRunId: v.optional(v.id("runs")),
+    inboundEventId: v.optional(v.id("inboundEvents")),
     workflowId: v.optional(v.string()),
     threadId: v.optional(v.string()),
     principalAuthUserId: v.string(),
     title: v.string(),
+    assignmentPrompt: v.optional(v.string()),
     status: runStatusValidator,
     budgetTokens: v.optional(v.number()),
     usedTokens: v.optional(v.number()),
+    maxSteps: v.optional(v.number()),
+    modelMode: v.optional(
+      v.union(v.literal("mock"), v.literal("gateway")),
+    ),
+    resultSummary: v.optional(v.string()),
+    resultJson: v.optional(v.string()),
+    completedSteps: v.optional(v.array(v.string())),
     errorMessage: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -100,7 +122,53 @@ export default defineSchema({
   })
     .index("by_org_and_status", ["organizationId", "status"])
     .index("by_org_and_deal", ["organizationId", "dealId"])
-    .index("by_parent", ["parentRunId"]),
+    .index("by_parent", ["parentRunId"])
+    .index("by_workflow", ["workflowId"]),
+
+  inboundEvents: defineTable({
+    organizationId: v.id("organizations"),
+    provider: v.string(),
+    providerAccount: v.string(),
+    providerEventId: v.string(),
+    dedupeKey: v.string(),
+    eventType: v.string(),
+    occurredAt: v.number(),
+    receivedAt: v.number(),
+    payloadJson: v.string(),
+    status: inboundEventStatusValidator,
+    runId: v.optional(v.id("runs")),
+    attempts: v.number(),
+    errorMessage: v.optional(v.string()),
+  })
+    .index("by_dedupe", ["organizationId", "dedupeKey"])
+    .index("by_org_and_status", ["organizationId", "status"]),
+
+  toolExecutions: defineTable({
+    organizationId: v.id("organizations"),
+    runId: v.id("runs"),
+    stepKey: v.string(),
+    toolName: v.string(),
+    toolVersion: v.string(),
+    classification: v.union(v.literal("read"), v.literal("write")),
+    argsJson: v.string(),
+    resultJson: v.optional(v.string()),
+    status: toolExecutionStatusValidator,
+    durationMs: v.optional(v.number()),
+    externalRequestId: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_run_and_step", ["runId", "stepKey"]),
+
+  usageRecords: defineTable({
+    organizationId: v.id("organizations"),
+    runId: v.id("runs"),
+    model: v.string(),
+    inputTokens: v.number(),
+    outputTokens: v.number(),
+    totalTokens: v.number(),
+    estimatedCostUsd: v.optional(v.number()),
+    providerRequestId: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_run", ["runId"]),
 
   auditEvents: defineTable({
     organizationId: v.id("organizations"),
