@@ -25,6 +25,8 @@ const connectionReturn = v.object({
   status: connectionStatusValidator,
   lastError: v.optional(v.string()),
   lastCheckedAt: v.optional(v.number()),
+  watchExpiresAt: v.optional(v.number()),
+  renewAfterAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
@@ -222,6 +224,219 @@ export const disconnect = mutation({
       organizationId: args.organizationId,
       actorAuthUserId: user.id,
       action: "connection.disconnect",
+      targetType: "connections",
+      targetId: args.connectionId,
+      createdAt: now,
+    });
+    return null;
+  },
+});
+
+/**
+ * Mark connection as needing reconnect (expired auth / revoked scopes).
+ * Surfaces in Connections + Ops without deleting history.
+ */
+export const markNeedsReconnect = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    connectionId: v.id("connections"),
+    reason: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { user } = await requireOrgAccess(ctx, args.organizationId, "admin");
+    const connection = await ctx.db.get("connections", args.connectionId);
+    if (!connection || connection.organizationId !== args.organizationId) {
+      throw new Error("Connection not found");
+    }
+    const now = Date.now();
+    await ctx.db.patch("connections", args.connectionId, {
+      health: "needs_reconnect",
+      lastError: args.reason ?? "Reconnect required",
+      lastCheckedAt: now,
+      updatedAt: now,
+    });
+    await ctx.db.insert("inboxItems", {
+      organizationId: args.organizationId,
+      kind: "exception",
+      status: "unread",
+      title: `Reconnect ${connection.provider}`,
+      summary:
+        args.reason ??
+        `${connection.displayName} needs reconnect before live use.`,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await ctx.db.insert("auditEvents", {
+      organizationId: args.organizationId,
+      actorAuthUserId: user.id,
+      action: "connection.needs_reconnect",
+      targetType: "connections",
+      targetId: args.connectionId,
+      metadata: JSON.stringify({ reason: args.reason }),
+      createdAt: now,
+    });
+    return null;
+  },
+});
+
+/**
+ * Record a renew window for watch/subscription-style providers.
+ * Does not call live APIs — operators attach a fresh managed credential ref.
+ */
+export const scheduleRenewal = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    connectionId: v.id("connections"),
+    watchExpiresAt: v.number(),
+    renewLeadMs: v.optional(v.number()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { user } = await requireOrgAccess(ctx, args.organizationId, "admin");
+    const connection = await ctx.db.get("connections", args.connectionId);
+    if (!connection || connection.organizationId !== args.organizationId) {
+      throw new Error("Connection not found");
+    }
+    const lead = args.renewLeadMs ?? 24 * 60 * 60 * 1000;
+    const renewAfterAt = args.watchExpiresAt - lead;
+    const now = Date.now();
+    await ctx.db.patch("connections", args.connectionId, {
+      watchExpiresAt: args.watchExpiresAt,
+      renewAfterAt,
+      updatedAt: now,
+      lastCheckedAt: now,
+    });
+    await ctx.db.insert("auditEvents", {
+      organizationId: args.organizationId,
+      actorAuthUserId: user.id,
+      action: "connection.renewal_scheduled",
+      targetType: "connections",
+      targetId: args.connectionId,
+      metadata: JSON.stringify({
+        watchExpiresAt: args.watchExpiresAt,
+        renewAfterAt,
+      }),
+      createdAt: now,
+    });
+    return null;
+  },
+});
+
+/** Connections that need operator attention (reconnect or renew soon). */
+export const listNeedingAttention = query({
+  args: { organizationId: v.id("organizations") },
+  returns: v.array(
+    v.object({
+      _id: v.id("connections"),
+      provider: connectionProviderValidator,
+      displayName: v.string(),
+      health: connectionHealthValidator,
+      mode: connectionModeValidator,
+      status: connectionStatusValidator,
+      lastError: v.optional(v.string()),
+      watchExpiresAt: v.optional(v.number()),
+      renewAfterAt: v.optional(v.number()),
+      reason: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    await requireOrgAccess(ctx, args.organizationId, "viewer");
+    const now = Date.now();
+    const rows = await ctx.db
+      .query("connections")
+      .withIndex("by_org_and_status", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .collect();
+    const out: Array<{
+      _id: typeof rows[0]["_id"];
+      provider: (typeof rows)[0]["provider"];
+      displayName: string;
+      health: (typeof rows)[0]["health"];
+      mode: (typeof rows)[0]["mode"];
+      status: (typeof rows)[0]["status"];
+      lastError?: string;
+      watchExpiresAt?: number;
+      renewAfterAt?: number;
+      reason: string;
+    }> = [];
+    for (const c of rows) {
+      if (c.status === "disconnected" || c.health === "needs_reconnect") {
+        out.push({
+          _id: c._id,
+          provider: c.provider,
+          displayName: c.displayName,
+          health: c.health,
+          mode: c.mode,
+          status: c.status,
+          lastError: c.lastError,
+          watchExpiresAt: c.watchExpiresAt,
+          renewAfterAt: c.renewAfterAt,
+          reason: c.lastError ?? "Needs reconnect",
+        });
+        continue;
+      }
+      if (
+        c.health === "expired" ||
+        c.health === "error" ||
+        (c.renewAfterAt != null && c.renewAfterAt <= now)
+      ) {
+        out.push({
+          _id: c._id,
+          provider: c.provider,
+          displayName: c.displayName,
+          health: c.health,
+          mode: c.mode,
+          status: c.status,
+          lastError: c.lastError,
+          watchExpiresAt: c.watchExpiresAt,
+          renewAfterAt: c.renewAfterAt,
+          reason:
+            c.renewAfterAt != null && c.renewAfterAt <= now
+              ? "Watch/subscription renew window open"
+              : (c.lastError ?? `Health=${c.health}`),
+        });
+      }
+    }
+    return out;
+  },
+});
+
+/**
+ * Clear reconnect flag after operator re-attaches credentials.
+ * Does not claim live OAuth succeeded — only clears local health when
+ * managedCredentialRef is present (or MOCK mode).
+ */
+export const acknowledgeReconnected = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    connectionId: v.id("connections"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { user } = await requireOrgAccess(ctx, args.organizationId, "admin");
+    const connection = await ctx.db.get("connections", args.connectionId);
+    if (!connection || connection.organizationId !== args.organizationId) {
+      throw new Error("Connection not found");
+    }
+    if (connection.mode === "live" && !connection.managedCredentialRef) {
+      throw new Error(
+        "Attach a managed credential ref before acknowledging reconnect",
+      );
+    }
+    const now = Date.now();
+    await ctx.db.patch("connections", args.connectionId, {
+      status: "active",
+      health: connection.mode === "mock" ? "mock" : "healthy",
+      lastError: undefined,
+      lastCheckedAt: now,
+      updatedAt: now,
+    });
+    await ctx.db.insert("auditEvents", {
+      organizationId: args.organizationId,
+      actorAuthUserId: user.id,
+      action: "connection.reconnected_ack",
       targetType: "connections",
       targetId: args.connectionId,
       createdAt: now,

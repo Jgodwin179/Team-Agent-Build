@@ -49,15 +49,24 @@ Ingress → verify → persist `inboundEvents` (dedupe) → workflow → agent s
 - Org `settings.schedulesEnabled` defaults **false** in development.
 - Coordinator runs spawn bounded specialist children (`parentRunId` tree); cancel propagates; optional child failure yields a partial result with `missingWorkJson`.
 
+## Launch readiness (Phase 6)
+
+- **Ops queue** (`convex/ops.ts`, `/ops`): failed inbound + failed runs; admin safe replay (resume or restart; preserves provider event id).
+- **Connection renew/reconnect**: `watchExpiresAt` / `renewAfterAt`, `listNeedingAttention`, acknowledge reconnect (no invented OAuth).
+- **Outbound unknown reconcile** (`convex/reconcile.ts`): operator mark sent/failed/dry-run; cron folds dry-run unknowns only — never auto-resend.
+- **Schedule reconcile**: cron every 15m + manual `/ops` trigger; uses occurrence-key dedupe.
+- **Retention**: preview + bounded purge for audit/usage/succeeded inbound only; daily cron. Ledger/docs/deals never auto-deleted.
+- Crons registered in `convex/crons.ts`.
+
 ## Directory map
 
 ```
 app/ or src/app/     Next.js pages + auth proxy routes
 components/          UI shell
-convex/              schema, auth, orgs, deals, runs, permissions, seed
+convex/              schema, auth, orgs, deals, runs, ops, retention, reconcile, crons
 src/lib/providers/   EmailProvider etc. (mock/dry-run/live)
 src/lib/channels/    Chat SDK health / future bot wiring
-docs/                architecture, capabilities, status, env setup
+docs/                architecture, capabilities, status, setup, deploy, runbook
 ```
 
 ## Development deployment

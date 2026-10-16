@@ -400,6 +400,61 @@ export const markOccurrenceTerminal = internalMutation({
   },
 });
 
+export async function reconcileMissedCore(
+  ctx: MutationCtx,
+  scheduleId: Id<"schedules">,
+  nowUtc: number,
+): Promise<{ fired: number; skipped: number }> {
+  const schedule = await ctx.db.get("schedules", scheduleId);
+  if (!schedule || !schedule.enabled) {
+    return { fired: 0, skipped: 0 };
+  }
+  if (schedule.missedRunPolicy === "skip") {
+    await armNextOccurrence(ctx, schedule._id, nowUtc);
+    return { fired: 0, skipped: 0 };
+  }
+
+  let fired = 0;
+  let skipped = 0;
+  let after = schedule.lastFiredAt ?? schedule.createdAt;
+  const maxCatchUp = schedule.missedRunPolicy === "catch_up_one" ? 1 : 10;
+
+  for (let i = 0; i < maxCatchUp; i++) {
+    const next = computeNextOccurrence(
+      {
+        recurrence: schedule.recurrence,
+        timezone: schedule.timezone,
+        localHour: schedule.localHour,
+        localMinute: schedule.localMinute,
+        daysOfWeek: schedule.daysOfWeek,
+        startAtUtc: schedule.startAtUtc,
+        endAtUtc: schedule.endAtUtc,
+      },
+      after,
+    );
+    if (!next || next.at > nowUtc) break;
+    const occurrenceKey = buildOccurrenceKey({
+      scheduleId: schedule._id,
+      localDate: next.localDate,
+      localHour: next.localHour,
+      localMinute: next.localMinute,
+      timezone: schedule.timezone,
+    });
+    const result = await fireOccurrenceCore(ctx, {
+      scheduleId: schedule._id,
+      occurrenceKey,
+      scheduledAt: next.at,
+    });
+    if (result.status === "started") fired++;
+    else skipped++;
+    after = next.at;
+    if (schedule.missedRunPolicy === "catch_up_one") break;
+  }
+
+  await armNextOccurrence(ctx, schedule._id, nowUtc);
+  return { fired, skipped };
+}
+
 export const reconcileMissed = internalMutation({
   args: {
     scheduleId: v.id("schedules"),
@@ -410,54 +465,7 @@ export const reconcileMissed = internalMutation({
     skipped: v.number(),
   }),
   handler: async (ctx, args) => {
-    const schedule = await ctx.db.get("schedules", args.scheduleId);
-    if (!schedule || !schedule.enabled) {
-      return { fired: 0, skipped: 0 };
-    }
-    if (schedule.missedRunPolicy === "skip") {
-      await armNextOccurrence(ctx, schedule._id, args.nowUtc);
-      return { fired: 0, skipped: 0 };
-    }
-
-    let fired = 0;
-    let skipped = 0;
-    let after = schedule.lastFiredAt ?? schedule.createdAt;
-    const maxCatchUp = schedule.missedRunPolicy === "catch_up_one" ? 1 : 10;
-
-    for (let i = 0; i < maxCatchUp; i++) {
-      const next = computeNextOccurrence(
-        {
-          recurrence: schedule.recurrence,
-          timezone: schedule.timezone,
-          localHour: schedule.localHour,
-          localMinute: schedule.localMinute,
-          daysOfWeek: schedule.daysOfWeek,
-          startAtUtc: schedule.startAtUtc,
-          endAtUtc: schedule.endAtUtc,
-        },
-        after,
-      );
-      if (!next || next.at > args.nowUtc) break;
-      const occurrenceKey = buildOccurrenceKey({
-        scheduleId: schedule._id,
-        localDate: next.localDate,
-        localHour: next.localHour,
-        localMinute: next.localMinute,
-        timezone: schedule.timezone,
-      });
-      const result = await fireOccurrenceCore(ctx, {
-        scheduleId: schedule._id,
-        occurrenceKey,
-        scheduledAt: next.at,
-      });
-      if (result.status === "started") fired++;
-      else skipped++;
-      after = next.at;
-      if (schedule.missedRunPolicy === "catch_up_one") break;
-    }
-
-    await armNextOccurrence(ctx, schedule._id, args.nowUtc);
-    return { fired, skipped };
+    return await reconcileMissedCore(ctx, args.scheduleId, args.nowUtc);
   },
 });
 

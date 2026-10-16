@@ -27,6 +27,7 @@ const NAV = [
   { href: "/connections", label: "Connections" },
   { href: "/documents", label: "Documents" },
   { href: "/approvals", label: "Approvals" },
+  { href: "/ops", label: "Ops" },
 ];
 
 type OrgWithRole = Doc<"organizations"> & {

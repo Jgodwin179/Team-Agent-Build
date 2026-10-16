@@ -1,6 +1,6 @@
 # Implementation status
 
-Last updated: Phase 5 complete (local Convex); schedules/subagents browser smoke 5/5.
+Last updated: Phase 6 complete (local Convex); live smoke **not** run (authorization required).
 
 ## Phase summary
 
@@ -12,44 +12,42 @@ Last updated: Phase 5 complete (local Convex); schedules/subagents browser smoke
 | 3 — Connectors & documents | **Complete (local / MOCK default)** | Box/GHL/PDF citations; dry-run approvals |
 | 4 — Email/SMS POV flow | **Complete (local / MOCK default)** | AgentMail, Chat SDK, POV dry-run, outbound ledger |
 | 5 — Schedules & subagents | **Complete (local / disabled default)** | Schedules + DST wall-clock, event rules, coordinator→specialist tree |
-| 6 — Launch readiness | Not started | |
+| 6 — Launch readiness | **Complete (local / dry-run)** | Ops, replay, renew, retention, reconcile, production docs |
 
-## Phase 5 deliverables
+## Phase 6 deliverables
 
-- [x] Configurable schedules (`convex/schedules.ts`, `scheduleJobs.ts`) — TZ default America/New_York, DST wall-clock policy documented, enable/disable, next-run preview, manual run, missed-run + concurrency policies (default no overlap)
-- [x] Deterministic occurrence keys; transactional cancel/reschedule via `ctx.scheduler.cancel` + re-arm
-- [x] Event rules → durable runs (`convex/eventRules.ts`)
-- [x] Coordinator delegation → specialist run tree (`delegation.ts`, `coordinatorWorkflow`, `specialistWorkflow`) with bounded parallelism, depth/child limits, no recursive delegation by default
-- [x] Cancellation propagation (`runs.requestCancel` tree walk + `delegation.cancelTree`)
-- [x] Failed optional child → partial result with `missingWorkJson`
-- [x] Fixtures: `tests/phase5/schedules.test.mjs` + `fixtures.md` (DST, duplicate occurrences, failed child, budget exhaustion)
-- [x] UI `/schedules`; run detail child tree
-- [x] Docs + handoff `internal/phase-5-handoff.md`
-- [ ] Live schedule enable in shared env — **blocked** / not authorized (dev default disabled)
+- [x] Monitoring / operator visibility — `convex/ops.ts`, `/ops` (failed inbound + failed runs + summary)
+- [x] Failed-event safe replay — `ops.replayFailedInbound` (resume or restart; preserves provider event id)
+- [x] Connection renewal / reconnect — schema fields, `listNeedingAttention`, Connections + Ops UI
+- [x] Retention/deletion — `convex/retention.ts` preview + bounded execute; daily cron; safe tables only
+- [x] Reconciliation — outbound unknown resolve + dry-run fold cron; schedule missed reconcile cron + manual
+- [x] Production docs — README, setup, deployment, operations runbook; architecture/capabilities/status updated
+- [x] Remaining blockers list — `docs/remaining-blockers.md` (no MOCK-as-live claims)
+- [x] Live smoke procedure documented — **not executed** (needs explicit authorization)
 - [ ] GitHub PR — **blocked**: no repository remote
+- [ ] Preview deploy — **blocked**: no Vercel project / GitHub attach in this environment
+- [ ] Authorized live provider smoke — **blocked**: awaiting user authorization + credentials
 
-### Phase 5 verification commands
+### Phase 6 verification commands
 
-- `pnpm typecheck` / `pnpm lint` / `pnpm build` / `npx convex codegen` — pass
-- `node tests/phase5/schedules.test.mjs` — pass
-- Browser smoke — 5/5 (screenshots + recording in Project store `media/phase5-*`)
+- `pnpm typecheck` / `pnpm lint` / `pnpm build` / `npx convex codegen`
+- `node tests/phase6/ops.test.mjs` (if present)
 
-### Phase 5 design notes
+### Phase 6 design notes
 
-- Schedules stay **disabled** until org `settings.schedulesEnabled=true` and the schedule is enabled.
-- Recurrence uses local wall-clock in IANA TZ (not fixed UTC offsets).
-- Chat SDK / email / CRM outbound remain dry-run; schedule runners produce MOCK summaries only.
-- Convex Workflow remains the orchestrator for schedule + coordinator + specialist runs.
+- Replay and reconcile never auto-resend outbound.
+- Retention never auto-deletes runs, approvals, outbound ledger, documents, or deals.
+- Crons are registered but do not enable live automation; `ALLOW_LIVE_OUTBOUND` stays unset.
+- Schedules still require org `schedulesEnabled` before reconcile fires work.
 
-## Credential / setup (Phase 5)
+## Credential / setup checklist (user next steps)
 
-No new external credentials. Optional admin action in UI:
+1. Attach GitHub remote → push `cursor/phase-6-launch-f2cf` → open PR
+2. Link Vercel preview; set `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_SITE_URL`, Convex `SITE_URL`
+3. Optional credentials (still dry-run): Composio, GHL, AgentMail, Twilio, Redis, AI Gateway
+4. Keep `ALLOW_LIVE_OUTBOUND` unset until explicit authorization
+5. After auth: follow `docs/operations-runbook.md` live smoke section with test recipients only
 
-1. `/schedules` → **Enable org schedules (dev)** (sets `schedulesEnabled`)
-2. Create schedule → **Enable** individual schedule → or **Run now** (manual, works even when schedule disabled)
+## Safety
 
-Keep `ALLOW_LIVE_OUTBOUND` unset.
-
-## Next up (Phase 6)
-
-Launch readiness — real-integration POV, permission boundary tests, production checklist.
+Mocks and dry-run paths are labeled. Do not claim integrations complete because fixtures pass.

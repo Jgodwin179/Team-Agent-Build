@@ -57,6 +57,17 @@ Outbound default: **dry-run**. Live sends require `ALLOW_LIVE_OUTBOUND=true` **a
 | Page-aware chunks + citations | **Implemented** — `documentChunks` with `p.N` citations |
 | Bounded worker/sandbox for heavy OCR/artifacts | Planned (Phase 5/6) |
 
+## Ops / launch readiness (Phase 6)
+
+| Concern | Status |
+|---|---|
+| Failed-event queue + safe replay | **Implemented** — `/ops`, `convex/ops.ts` (MOCK fixture available) |
+| Connection renew / reconnect UI | **Implemented** — watch window fields; live watch API calls still need credentials |
+| Outbound `unknown` reconcile | **Implemented** — operator resolve; cron folds dry-run only (never resend) |
+| Schedule missed-transition reconcile | **Implemented** — cron 15m + manual; requires `schedulesEnabled` |
+| Retention / deletion | **Implemented** (safe tables only) — audit/usage/succeeded inbound |
+| Live provider smoke | **Documented only** — not run without explicit authorization |
+
 ## Unresolved requirements
 
 1. AI Gateway / Convex credential form for this org (API key vs OIDC) — set on Convex env, not only Vercel.
@@ -67,3 +78,4 @@ Outbound default: **dry-run**. Live sends require `ALLOW_LIVE_OUTBOUND=true` **a
 6. Managed Redis (Upstash/Redis Cloud) for Chat SDK in preview/prod.
 7. GitHub remote for this project — none attached to the agent run (blocks PR open until a remote exists).
 8. Production OCR vendor selection after testing representative scanned PDFs.
+9. Authorized live POV smoke against real providers (see `operations-runbook.md`).

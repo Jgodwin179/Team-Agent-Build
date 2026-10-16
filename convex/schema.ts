@@ -178,6 +178,11 @@ export default defineSchema({
       maxChildrenPerRun: v.optional(v.number()),
       allowRecursiveDelegation: v.optional(v.boolean()),
       maxParallelChildren: v.optional(v.number()),
+      /** Days to retain audit/usage rows (Phase 6). Default 90. */
+      retentionDaysAudit: v.optional(v.number()),
+      retentionDaysUsage: v.optional(v.number()),
+      /** Days before inactive inbound events may be purged (succeeded only). */
+      retentionDaysInboundSucceeded: v.optional(v.number()),
     }),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -293,7 +298,9 @@ export default defineSchema({
     estimatedCostUsd: v.optional(v.number()),
     providerRequestId: v.optional(v.string()),
     createdAt: v.number(),
-  }).index("by_run", ["runId"]),
+  })
+    .index("by_run", ["runId"])
+    .index("by_org_and_created", ["organizationId", "createdAt"]),
 
   auditEvents: defineTable({
     organizationId: v.id("organizations"),
@@ -320,11 +327,15 @@ export default defineSchema({
     status: connectionStatusValidator,
     lastError: v.optional(v.string()),
     lastCheckedAt: v.optional(v.number()),
+    /** Watch/subscription expiry (provider-specific); surface renew before this. */
+    watchExpiresAt: v.optional(v.number()),
+    renewAfterAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_org_and_provider", ["organizationId", "provider"])
-    .index("by_org_and_status", ["organizationId", "status"]),
+    .index("by_org_and_status", ["organizationId", "status"])
+    .index("by_org_and_health", ["organizationId", "health"]),
 
   documents: defineTable({
     organizationId: v.id("organizations"),

@@ -22,9 +22,18 @@ export default function ConnectionsPage() {
   const connectMock = useMutation(api.connections.connectMock);
   const attachLive = useMutation(api.connections.attachLiveCredential);
   const disconnect = useMutation(api.connections.disconnect);
+  const markNeedsReconnect = useMutation(api.connections.markNeedsReconnect);
+  const scheduleRenewal = useMutation(api.connections.scheduleRenewal);
+  const acknowledgeReconnected = useMutation(
+    api.connections.acknowledgeReconnected,
+  );
+  const needingAttention = useQuery(api.connections.listNeedingAttention, {
+    organizationId,
+  });
   const [provider, setProvider] =
     useState<(typeof PROVIDERS)[number]>("box");
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [liveConnectionId, setLiveConnectionId] = useState("");
   const [managedRef, setManagedRef] = useState("");
   const [composioUserId, setComposioUserId] = useState("");
@@ -168,6 +177,59 @@ export default function ConnectionsPage() {
       </form>
 
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {message ? (
+        <p className="text-sm text-emerald-800">{message}</p>
+      ) : null}
+
+      <section className="space-y-2">
+        <h2 className="text-lg font-medium">Needs reconnect / renew</h2>
+        {(needingAttention ?? []).length === 0 ? (
+          <p className="text-sm text-slate-500">Nothing needs attention.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100 rounded border border-amber-200 bg-amber-50/40">
+            {(needingAttention ?? []).map((c) => (
+              <li
+                key={c._id}
+                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm"
+              >
+                <div>
+                  <p className="font-medium">
+                    {c.provider} · {c.displayName}{" "}
+                    <span className="text-xs uppercase text-amber-900">
+                      {c.health}
+                    </span>
+                  </p>
+                  <p className="text-xs text-amber-900">{c.reason}</p>
+                </div>
+                {canAdmin ? (
+                  <button
+                    type="button"
+                    className="rounded border border-slate-900 px-3 py-1 text-xs"
+                    onClick={() =>
+                      void acknowledgeReconnected({
+                        organizationId,
+                        connectionId: c._id,
+                      })
+                        .then(() =>
+                          setMessage(`Acknowledged reconnect: ${c.displayName}`),
+                        )
+                        .catch((err: unknown) =>
+                          setError(
+                            err instanceof Error
+                              ? err.message
+                              : "Ack reconnect failed",
+                          ),
+                        )
+                    }
+                  >
+                    Acknowledge reconnect
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {!connections ? (
         <p className="text-sm text-slate-500">Loading…</p>
@@ -181,6 +243,7 @@ export default function ConnectionsPage() {
               <th className="px-3 py-2 font-medium">Label</th>
               <th className="px-3 py-2 font-medium">Mode</th>
               <th className="px-3 py-2 font-medium">Health</th>
+              <th className="px-3 py-2 font-medium">Renew</th>
               <th className="px-3 py-2 font-medium">Id</th>
               <th className="px-3 py-2 font-medium" />
             </tr>
@@ -205,26 +268,85 @@ export default function ConnectionsPage() {
                 </td>
                 <td className="px-3 py-2 text-xs uppercase">{c.health}</td>
                 <td className="px-3 py-2 font-mono text-xs text-slate-500">
+                  {c.renewAfterAt
+                    ? new Date(c.renewAfterAt).toISOString().slice(0, 10)
+                    : "—"}
+                </td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-500">
                   {c._id}
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <button
-                    type="button"
-                    className="text-xs text-red-700 hover:underline"
-                    disabled={!canAdmin}
-                    onClick={() =>
-                      void disconnect({
-                        organizationId,
-                        connectionId: c._id,
-                      }).catch((err: unknown) =>
-                        setError(
-                          err instanceof Error ? err.message : "Disconnect failed",
-                        ),
-                      )
-                    }
-                  >
-                    Disconnect
-                  </button>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <button
+                      type="button"
+                      className="text-xs text-amber-800 hover:underline"
+                      disabled={!canAdmin}
+                      onClick={() =>
+                        void markNeedsReconnect({
+                          organizationId,
+                          connectionId: c._id,
+                          reason: "Operator flagged reconnect",
+                        })
+                          .then(() =>
+                            setMessage(`Flagged reconnect: ${c.displayName}`),
+                          )
+                          .catch((err: unknown) =>
+                            setError(
+                              err instanceof Error
+                                ? err.message
+                                : "Mark reconnect failed",
+                            ),
+                          )
+                      }
+                    >
+                      Needs reconnect
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs text-slate-700 hover:underline"
+                      disabled={!canAdmin}
+                      onClick={() =>
+                        void scheduleRenewal({
+                          organizationId,
+                          connectionId: c._id,
+                          watchExpiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+                        })
+                          .then(() =>
+                            setMessage(
+                              `Renew window set (+7d) for ${c.displayName}`,
+                            ),
+                          )
+                          .catch((err: unknown) =>
+                            setError(
+                              err instanceof Error
+                                ? err.message
+                                : "Schedule renewal failed",
+                            ),
+                          )
+                      }
+                    >
+                      Set renew +7d
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs text-red-700 hover:underline"
+                      disabled={!canAdmin}
+                      onClick={() =>
+                        void disconnect({
+                          organizationId,
+                          connectionId: c._id,
+                        }).catch((err: unknown) =>
+                          setError(
+                            err instanceof Error
+                              ? err.message
+                              : "Disconnect failed",
+                          ),
+                        )
+                      }
+                    >
+                      Disconnect
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
